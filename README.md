@@ -66,7 +66,9 @@
 - Quem tem acesso: **Qualquer pessoa com Conta do Google**
 - Clique em **Implantar** e copie a URL gerada
 
-**1.12** Acesse a URL. No celular, o app abre o layout mobile. No computador, abre o layout desktop. Faça login com `admin` / `admin123` — o sistema pedirá que você defina seu nome e senha pessoal antes de continuar.
+**1.12** Acesse a URL. No celular, o app abre o layout mobile. No computador, abre o layout desktop. 
+Faça login com `admin` / `admin123` — o sistema pedirá que você defina seu nome e senha pessoal antes de continuar.
+**OBS.: Se não pedir para trocar a senha, faça manualmente clicando no Mobile icone do usuário superior esquerdo, no Desktop na engrenagem ao lado do nome do dono.**
 
 ---
 
