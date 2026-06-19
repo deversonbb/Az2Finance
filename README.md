@@ -1,6 +1,6 @@
 # 💰 AZ² Finance — Manual de Uso
 
-> Controle financeiro pessoal e compartilhado, rodando 100% no Google Apps Script e Google Drive. Sem mensalidade, sem servidor externo.
+> Controle financeiro pessoal e compartilhado, rodando 100% no Google Apps Script e Google Drive.
 
 ---
 
