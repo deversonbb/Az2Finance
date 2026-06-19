@@ -755,7 +755,7 @@ function carregarRelatorio(){
   google.script.run
     .withSuccessHandler(function(r){loading(false);if(!r.ok){toast(r.msg,'err');return;}_renderRelatorio(r);})
     .withFailureHandler(function(){loading(false);toast('Erro','err');})
-    .relatorioMensal(mes,ano,STATE.espacoAtual.id, STATE.user.id);
+    .relatorioMensal(mes,ano,STATE.espacoAtual.id);
 }
 function _renderRelatorio(r){
   var rs=r.resumo||{},saldo=(rs.recebido||0)-(rs.pago||0);
@@ -789,7 +789,7 @@ function exportarPDF(){
   google.script.run
     .withSuccessHandler(function(r){loading(false);if(!r.ok){toast(r.msg,'err');return;}toast('PDF gerado!','ok');window.open('https://drive.google.com/file/d/'+r.fileId+'/view','_blank');})
     .withFailureHandler(function(){loading(false);toast('Erro ao gerar PDF','err');})
-    .gerarRelatorioPDF(mes,ano,STATE.espacoAtual.id, STATE.user.id);
+    .gerarRelatorioPDF(mes,ano,STATE.espacoAtual.id);
 }
 // =============================================================
 // Lista de categoria com barra de progresso (mesmo estilo do dashboard)
@@ -953,7 +953,7 @@ function carregarTudo(){
       carregarLancamentos();
     })
     .withFailureHandler(function(){loading(false);toast('Erro de conexão','err');})
-    .loadAllData(STATE.espacoAtual.id, STATE.user.id);
+    .loadAllData(STATE.espacoAtual.id);
 }
 function _renderSidebar(){
   if(!STATE.user||!STATE.espacoAtual)return;
@@ -1057,7 +1057,7 @@ function carregarLancamentos(){
       _atualizarDashboard(rs,r.rows||[]);
     })
     .withFailureHandler(function(){loading(false);toast('Erro','err');})
-    .listarLancamentosMes(STATE.mes,STATE.ano,STATE.espacoAtual.id, STATE.user.id);
+    .listarLancamentosMes(STATE.mes,STATE.ano,STATE.espacoAtual.id);
 }
 function mudarMes(d){STATE.mes+=d;if(STATE.mes>12){STATE.mes=1;STATE.ano++;}if(STATE.mes<1){STATE.mes=12;STATE.ano--;}carregarLancamentos();}
 function filtrar(tipo,btn){
@@ -1074,13 +1074,33 @@ function _isAtrasado(l){
 function renderTabelaLancamentos(){
   var tbody=el('tabela-lancamentos'); tbody.innerHTML='';
   var hoje=new Date();hoje.setHours(0,0,0,0);
+  var busca=(el('busca-lanc').value||'').toLowerCase().trim();
   var lancs=STATE.lancamentos.filter(function(l){
     var st=l.status;if(st==='pendente'&&_isAtrasado(l))st='atrasado';
-    if(STATE.filtroAtivo==='todos')return true;
-    if(STATE.filtroAtivo==='pagar')return l.tipo==='pagar'&&st!=='pago';
-    if(STATE.filtroAtivo==='receber')return l.tipo==='receber'&&st!=='pago';
-    if(STATE.filtroAtivo==='atrasado')return st==='atrasado';
-    if(STATE.filtroAtivo==='pago')return st==='pago';
+    // Filtro por tipo (botões)
+    if(STATE.filtroAtivo==='pagar'&&!(l.tipo==='pagar'&&st!=='pago'))return false;
+    if(STATE.filtroAtivo==='receber'&&!(l.tipo==='receber'&&st!=='pago'))return false;
+    if(STATE.filtroAtivo==='atrasado'&&st!=='atrasado')return false;
+    if(STATE.filtroAtivo==='pago'&&st!=='pago')return false;
+    // Filtro por texto de busca (descrição, categoria, carteira, vencimento, valor, status)
+    if(busca){
+      var cat=STATE.categorias.find(function(c){return c.id===l.categoria_id;});
+      var wal=STATE.carteiras.find(function(w){return w.id===l.carteira_id;});
+      var venc=l.data_vencimento?new Date(l.data_vencimento):null;
+      var vencStr=venc?(venc.getDate()+'/'+(venc.getMonth()+1)):'';
+      var badgeTxt=st==='pago'?'pago':st==='atrasado'?'atrasado':l.tipo==='receber'?'a receber':'pendente';
+      var valorStr='r$ '+(Number(l.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+      var campos=[
+        l.descricao||'',
+        cat?cat.nome:'',
+        wal?wal.nome:'',
+        vencStr,
+        valorStr,
+        badgeTxt
+      ];
+      var encontrou=campos.some(function(c){return c.toLowerCase().indexOf(busca)>=0;});
+      if(!encontrou)return false;
+    }
     return true;
   });
   if(!lancs.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--tx2);padding:32px;">Nenhum lançamento encontrado</td></tr>';return;}
@@ -1310,7 +1330,6 @@ function salvarCategoria(){
   var nome=el('cat-nome').value.trim(),tipo=el('cat-tipo').value,icone=el('cat-icone').value.trim(),id=el('cat-id-edit').value;
   if(!nome){toast('Informe o nome','err');return;}
   var cat={id:id||undefined,espaco_id:STATE.espacoAtual.id,nome:nome,tipo:tipo,cor:STATE._corCatSel,icone:icone,ativa:true};
-  cat.usuario_id = STATE.user.id; // D1 — autorização de escrita
   loading(true);
   google.script.run
     .withSuccessHandler(function(r){loading(false);if(!r.ok){toast(r.msg,'err');return;}if(id)STATE.categorias=STATE.categorias.map(function(c){return c.id===id?r.categoria:c;});else STATE.categorias.push(r.categoria);fecharFormCat();renderListaCat();toast(id?'Atualizado ✓':'Criado ✓','ok');})
@@ -1323,7 +1342,7 @@ function excluirCategoria(id){
   google.script.run
     .withSuccessHandler(function(r){loading(false);if(!r.ok){toast(r.msg,'err');return;}STATE.categorias=STATE.categorias.filter(function(c){return c.id!==id;});renderListaCat();toast('Removida','ok');})
     .withFailureHandler(function(){loading(false);toast('Erro','err');})
-    .excluirCategoria(id,STATE.espacoAtual.id, STATE.user.id);
+    .excluirCategoria(id,STATE.espacoAtual.id);
 }
 function renderListaCat(){
   var c=el('lista-cat');c.innerHTML='';
@@ -1352,7 +1371,6 @@ function salvarCarteira(){
   var nome=el('wal-nome').value.trim(),tipo=el('wal-tipo').value,saldo=parseFloat(el('wal-saldo').value)||0,id=el('wal-id-edit').value;
   if(!nome){toast('Informe o nome','err');return;}
   var w={id:id||undefined,espaco_id:STATE.espacoAtual.id,nome:nome,tipo:tipo,saldo_inicial:saldo,ativa:true};
-  w.usuario_id = STATE.user.id; // D1 — autorização de escrita
   loading(true);
   google.script.run
     .withSuccessHandler(function(r){loading(false);if(!r.ok){toast(r.msg,'err');return;}if(id)STATE.carteiras=STATE.carteiras.map(function(x){return x.id===id?r.carteira:x;});else STATE.carteiras.push(r.carteira);fecharFormWal();renderListaWal();toast(id?'Atualizado ✓':'Criado ✓','ok');})
@@ -1365,7 +1383,7 @@ function excluirCarteira(id){
   google.script.run
     .withSuccessHandler(function(r){loading(false);if(!r.ok){toast(r.msg,'err');return;}STATE.carteiras=STATE.carteiras.filter(function(w){return w.id!==id;});renderListaWal();toast('Removida','ok');})
     .withFailureHandler(function(){loading(false);toast('Erro','err');})
-    .excluirCarteira(id,STATE.espacoAtual.id, STATE.user.id);
+    .excluirCarteira(id,STATE.espacoAtual.id);
 }
 function renderListaWal(){
   var c=el('lista-wal');c.innerHTML='';
