@@ -561,3 +561,4 @@ Nada. O sistema usa apenas Google Apps Script e Google Drive, que são gratuitos
 
 *AZ² Finance — desenvolvido com Google Apps Script*
 *Última atualização: junho de 2026*
+*www.az2.com.br*
