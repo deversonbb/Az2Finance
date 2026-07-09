@@ -919,7 +919,7 @@ function _getPerfilNoEspaco(userId, espacoId) {
 
 function listarMembrosEspaco(espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
+    if (userId) _assertMembro(userId, espacoId); // C1 — valida pertencimento ao espaco
     var ssMem = _getOuCriarPlanilha(PLAN_MEMBROS, HEADERS.membros_espaco);
     var membros = _readAll(ssMem).rows.filter(function(m) {
       return String(m.espaco_id) === String(espacoId);
@@ -994,7 +994,7 @@ function salvarCategoria(cat) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    _assertMembro(cat.usuario_id || cat.criado_por, cat.espaco_id); // C2 — autorização de escrita
+    _assertMembro(cat.criado_por || cat.usuario_id, cat.espaco_id); // C2
     var ss    = _getOuCriarPlanilha(PLAN_CATEGORIAS, HEADERS.categorias);
     var sheet = _sheet(ss);
     if (cat.id) {
@@ -1015,7 +1015,7 @@ function salvarCategoria(cat) {
 
 function listarCategorias(espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
+    if (userId) _assertMembro(userId, espacoId); // C1
     var ss   = _getOuCriarPlanilha(PLAN_CATEGORIAS, HEADERS.categorias);
     var rows = _readAll(ss).rows.filter(function(c) {
       return String(c.espaco_id) === String(espacoId) && c.ativa !== false && c.ativa !== 'false';
@@ -1033,7 +1033,7 @@ function salvarCarteira(wallet) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    _assertMembro(wallet.usuario_id, wallet.espaco_id); // C2 — autorização de escrita
+    _assertMembro(wallet.criado_por || wallet.usuario_id, wallet.espaco_id); // C2
     var ss    = _getOuCriarPlanilha(PLAN_CARTEIRAS, HEADERS.carteiras);
     var sheet = _sheet(ss);
     if (wallet.id) {
@@ -1057,7 +1057,7 @@ function salvarCarteira(wallet) {
 
 function listarCarteiras(espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
+    if (userId) _assertMembro(userId, espacoId); // C1
     var ss   = _getOuCriarPlanilha(PLAN_CARTEIRAS, HEADERS.carteiras);
     var rows = _readAll(ss).rows.filter(function(w) {
       return String(w.espaco_id) === String(espacoId) && w.ativa !== false && w.ativa !== 'false';
@@ -1143,7 +1143,7 @@ function salvarLancamento(lanc) {
  */
 function listarLancamentosMes(mes, ano, espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
+    if (userId) _assertMembro(userId, espacoId); // C1
     var data     = new Date(ano, mes - 1, 1);
     var nomePlan = _nomePlanilhaLanc(data, espacoId);
     var ss       = _getPlanilha(nomePlan);
@@ -1336,8 +1336,8 @@ function _excluirProximasParcelas(grupoId, parcelaNum, mesBase, anoBase, espacoI
 // =====================================================================
 function dashboardResumo(mes, ano, espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
-    var resultado = listarLancamentosMes(mes, ano, espacoId, userId); // C1 — repassa userId
+    if (userId) _assertMembro(userId, espacoId); // C1
+    var resultado = listarLancamentosMes(mes, ano, espacoId, userId);
     if (!resultado.ok) return { ok: false, msg: resultado.msg };
 
     var rows = resultado.rows;
@@ -1381,15 +1381,15 @@ function dashboardResumo(mes, ano, espacoId, userId) {
 // =====================================================================
 function loadAllData(espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
+    if (userId) _assertMembro(userId, espacoId); // C1
     var hoje = new Date();
     var mes  = hoje.getMonth() + 1;
     var ano  = hoje.getFullYear();
 
-    var cats    = listarCategorias(espacoId, userId);    // C1 — repassa userId
-    var wallets = listarCarteiras(espacoId, userId);     // C1 — repassa userId
-    var dash    = dashboardResumo(mes, ano, espacoId, userId); // C1 — repassa userId
-    var membros = listarMembrosEspaco(espacoId, userId); // C1 — repassa userId
+    var cats    = listarCategorias(espacoId, userId);
+    var wallets = listarCarteiras(espacoId, userId);
+    var dash    = dashboardResumo(mes, ano, espacoId, userId);
+    var membros = listarMembrosEspaco(espacoId, userId);
 
     return {
       ok: true,
@@ -1437,12 +1437,12 @@ function getAnexo(fileId, userId, espacoId) {
     _assertMembro(userId, espacoId);
     if (!fileId) return { ok: false, msg: 'ID do arquivo nao informado' };
 
-    // C4 — Verifica que o arquivo pertence à pasta do espaço informado (previne IDOR)
-    var _pastaEspaco   = _getPastaAnexos(espacoId);
+    // C4 — Verifica que o arquivo pertence à pasta do espaço informado
+    var _pastaEspaco = _getPastaAnexos(espacoId);
     var _pastaEspacoId = _pastaEspaco.getId();
-    var _fileCheck     = DriveApp.getFileById(fileId);
-    var _pais          = _fileCheck.getParents();
-    var _pertence      = false;
+    var _fileCheck = DriveApp.getFileById(fileId);
+    var _pais = _fileCheck.getParents();
+    var _pertence = false;
     while (_pais.hasNext()) {
       if (_pais.next().getId() === _pastaEspacoId) { _pertence = true; break; }
     }
@@ -1478,7 +1478,7 @@ function _buscarUsuarioPorId(userId) {
 
 function excluirCategoria(id, espacoId, userId) {
   try {
-    _assertMembro(userId, espacoId); // C2 — autorização de escrita
+    _assertMembro(userId, espacoId); // C2
     var ss = _getPlanilha(PLAN_CATEGORIAS);
     if (!ss) return { ok: false, msg: 'Planilha não encontrada' };
     var sheet   = _sheet(ss);
@@ -1504,7 +1504,7 @@ function excluirCategoria(id, espacoId, userId) {
 
 function excluirCarteira(id, espacoId, userId) {
   try {
-    _assertMembro(userId, espacoId); // C2 — autorização de escrita
+    _assertMembro(userId, espacoId); // C2
     var ss = _getPlanilha(PLAN_CARTEIRAS);
     if (!ss) return { ok: false, msg: 'Planilha não encontrada' };
     var sheet   = _sheet(ss);
@@ -1534,12 +1534,12 @@ function excluirCarteira(id, espacoId, userId) {
 // =====================================================================
 function relatorioMensal(mes, ano, espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
-    var resultado = listarLancamentosMes(mes, ano, espacoId, userId); // C1 — repassa userId
+    if (userId) _assertMembro(userId, espacoId); // C1
+    var resultado = listarLancamentosMes(mes, ano, espacoId, userId);
     if (!resultado.ok) return { ok: false, msg: resultado.msg };
 
     var rows = resultado.rows || [];
-    var cats = listarCategorias(espacoId, userId).rows || []; // C1 — repassa userId
+    var cats = listarCategorias(espacoId, userId).rows || [];
 
     // ---- Totais por categoria (despesas) ----
     var porCategoriaPagar = {};
@@ -1599,7 +1599,7 @@ function relatorioMensal(mes, ano, espacoId, userId) {
     var historico = [];
     for (var m = 5; m >= 0; m--) {
       var dm = new Date(ano, mes - 1 - m, 1);
-      var rm = listarLancamentosMes(dm.getMonth() + 1, dm.getFullYear(), espacoId, userId); // C1 — repassa userId
+      var rm = listarLancamentosMes(dm.getMonth() + 1, dm.getFullYear(), espacoId, userId);
       var rs = rm.ok ? rm.resumo : { pago: 0, recebido: 0 };
       historico.push({
         label: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][dm.getMonth()],
@@ -1786,11 +1786,11 @@ function gerarRecorrencias() {
 // =====================================================================
 function gerarRelatorioPDF(mes, ano, espacoId, userId) {
   try {
-    if (userId) _assertMembro(userId, espacoId); // C1 — autorização de leitura
-    var relat = relatorioMensal(mes, ano, espacoId, userId); // C1 — repassa userId
+    if (userId) _assertMembro(userId, espacoId); // C1
+    var relat = relatorioMensal(mes, ano, espacoId, userId);
     if (!relat.ok) return { ok: false, msg: relat.msg };
 
-    var cats  = listarCategorias(espacoId, userId).rows || []; // C1 — repassa userId
+    var cats  = listarCategorias(espacoId, userId).rows || [];
     var r     = relat.resumo;
     var MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
